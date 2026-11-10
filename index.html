@@ -197,6 +197,75 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #3b82f6;
         }
+        .project-image-viewer {
+            width: fit-content;
+            max-width: 94vw;
+            max-height: 94dvh;
+            padding: 3.5rem 1rem 1rem;
+            overflow: hidden;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            border-radius: 1rem;
+            background: rgba(11, 15, 25, 0.96);
+            color: #f3f4f6;
+        }
+        .project-image-viewer::backdrop {
+            background: rgba(3, 5, 12, 0.76);
+            backdrop-filter: blur(6px);
+            animation: project-viewer-backdrop-in 180ms ease-out both;
+        }
+        .project-image-viewer[open] {
+            animation: project-viewer-in 180ms ease-out both;
+        }
+        .project-image-viewer__close {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            display: inline-flex;
+            width: 2.5rem;
+            height: 2.5rem;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #334155;
+            border-radius: 9999px;
+            background: #121826;
+            color: #f3f4f6;
+            cursor: pointer;
+            transition: background-color 180ms ease, border-color 180ms ease;
+        }
+        .project-image-viewer__close:hover {
+            border-color: #3b82f6;
+            background: #1e293b;
+        }
+        .project-image-viewer__image {
+            display: block;
+            width: auto;
+            height: auto;
+            max-width: calc(94vw - 2rem);
+            max-height: calc(94dvh - 6.5rem);
+            margin: 0 auto;
+            border-radius: 0.5rem;
+            object-fit: contain;
+        }
+        .project-image-viewer__caption {
+            margin: 0.75rem 0 0;
+            color: #cbd5e1;
+            font-size: 0.875rem;
+            text-align: center;
+        }
+        @keyframes project-viewer-in {
+            from { opacity: 0; transform: translateY(8px) scale(0.985); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes project-viewer-backdrop-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .project-image-viewer[open],
+            .project-image-viewer::backdrop {
+                animation: none;
+            }
+        }
     </style>
 </head>
 <body class="bg-[#0b0f19] text-[#f3f4f6] relative selection:bg-blue-500 selection:text-white">
@@ -773,10 +842,46 @@
         <p>© 2026 Jesús López. All rights reserved. Designed for elite engineering standards.</p>
     </footer>
 
+    <dialog id="project-image-viewer" class="project-image-viewer" aria-labelledby="project-image-viewer-caption">
+        <button type="button" class="project-image-viewer__close" aria-label="Cerrar imagen ampliada">
+            <i data-lucide="x" size="20"></i>
+        </button>
+        <img class="project-image-viewer__image" alt="">
+        <p id="project-image-viewer-caption" class="project-image-viewer__caption"></p>
+    </dialog>
+
     <!-- Scripts de Partículas y GSAP Ultra-Suaves -->
     <script>
         // Inicializar iconos Lucide
         lucide.createIcons();
+
+        const projectImageViewer = document.getElementById('project-image-viewer');
+        const projectImage = projectImageViewer.querySelector('.project-image-viewer__image');
+        const projectImageCaption = document.getElementById('project-image-viewer-caption');
+        const projectImageClose = projectImageViewer.querySelector('.project-image-viewer__close');
+        let lastProjectImageLink = null;
+
+        document.addEventListener('click', (event) => {
+            const previewLink = event.target.closest('a[href^="images/"]');
+            if (!previewLink) return;
+
+            event.preventDefault();
+            lastProjectImageLink = previewLink;
+            const preview = previewLink.querySelector('img');
+            const projectName = previewLink.closest('article')?.querySelector('h3')?.textContent.trim();
+            const imageName = previewLink.querySelector('span')?.textContent.trim() || preview?.alt || 'Vista del proyecto';
+
+            projectImage.src = previewLink.href;
+            projectImage.alt = preview?.alt || imageName;
+            projectImageCaption.textContent = projectName ? `${projectName} · ${imageName}` : imageName;
+            projectImageViewer.showModal();
+        });
+
+        projectImageClose.addEventListener('click', () => projectImageViewer.close());
+        projectImageViewer.addEventListener('click', (event) => {
+            if (event.target === projectImageViewer) projectImageViewer.close();
+        });
+        projectImageViewer.addEventListener('close', () => lastProjectImageLink?.focus());
 
         const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
         const mobileMenu = document.getElementById('mobile-menu');
@@ -801,6 +906,12 @@
         });
 
         document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && projectImageViewer.open) {
+                event.preventDefault();
+                projectImageViewer.close();
+                return;
+            }
+
             if (event.key === 'Escape' && mobileMenuToggle.getAttribute('aria-expanded') === 'true') {
                 setMobileMenuOpen(false);
                 mobileMenuToggle.focus();
